@@ -86,4 +86,11 @@ public class DiccionarioProducto<T> implements IDiccionarioProducto<T> {
         for (int i = 0; i < cantidad; i++)
             System.out.println("  " + entradas[i].clave + " -> " + entradas[i].valor);
     }
+
+    // devuelve el valor en la posicion indicada, para poder recorrer el diccionario desde afuera
+    @Override
+    public T valorEn(int indice) {
+        if (indice < 0 || indice >= cantidad) return null;
+        return entradas[indice].valor;
+    }
 }

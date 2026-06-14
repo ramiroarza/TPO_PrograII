@@ -11,4 +11,5 @@ public interface IDiccionarioProducto<T> {
     boolean estaVacio();
     int tamanio();
     void mostrar();
+    T valorEn(int indice);
 }

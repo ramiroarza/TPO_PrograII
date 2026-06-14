@@ -61,6 +61,7 @@ public class Main {
         System.out.println("4. Modificar stock");
         System.out.println("5. Eliminar producto");
         System.out.println("6. Ver todos");
+        System.out.println("7. Stock total del deposito");
         System.out.print("Opcion: ");
 
         switch (sc.nextLine().trim()) {
@@ -118,6 +119,16 @@ public class Main {
                 diccionario.eliminar(b);
             }
             case "6" -> diccionario.mostrar();
+            case "7" -> {
+                if (diccionario.estaVacio()) { System.out.println("No hay productos registrados"); break; }
+                // recorremos el diccionario y sumamos el stock de todos los productos
+                int total = 0;
+                for (int i = 0; i < diccionario.tamanio(); i++) {
+                    Producto p = diccionario.valorEn(i);
+                    if (p != null) total += p.getCantidadStock();
+                }
+                System.out.println("Stock total del deposito: " + total + " unidades (" + diccionario.tamanio() + " productos)");
+            }
             default  -> System.out.println("Opcion no valida");
         }
     }
@@ -202,6 +213,7 @@ public class Main {
     // ─── EXPEDICION ──────────────────────────────────────────────────
     static void menuExpedicion(Scanner sc) {
         System.out.println("\n-- Expedicion --");
+        System.out.println("Pedidos en cola: " + colaPedidos.tamano());
         System.out.println("1. Encolar pedido");
         System.out.println("2. Despachar proximo");
         System.out.println("3. Ver proximo sin despachar");
@@ -231,6 +243,7 @@ public class Main {
     // ─── TRAZABILIDAD ────────────────────────────────────────────────
     static void menuTrazabilidad(Scanner sc) {
         System.out.println("\n-- Trazabilidad --");
+        System.out.println("Movimientos registrados: " + historial.tamano());
         System.out.println("1. Registrar movimiento");
         System.out.println("2. Deshacer ultimo movimiento");
         System.out.println("3. Ver historial");
