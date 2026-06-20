@@ -3,7 +3,7 @@ package tda;
 public class Grafo<T> implements IGrafo<T> {
 
     private T[] vertices;
-    private int[][] matriz;
+    private Lista<Arista>[] adyacencia;
     private int cantidad;
     private int capacidad;
     private boolean dirigido;
@@ -14,7 +14,7 @@ public class Grafo<T> implements IGrafo<T> {
         this.dirigido = dirigido;
         this.cantidad = 0;
         this.vertices = (T[]) new Object[capacidad];
-        this.matriz = new int[capacidad][capacidad];
+        this.adyacencia = new Lista[capacidad];
     }
 
     @Override
@@ -22,6 +22,7 @@ public class Grafo<T> implements IGrafo<T> {
         if (cantidad == capacidad) { System.out.println("No se pueden insertar mas vertices."); return; }
         if (existeVertice(vertice)) { System.out.println("El vertice ya existe."); return; }
         vertices[cantidad] = vertice;
+        adyacencia[cantidad] = new Lista<>();
         cantidad++;
     }
 
@@ -29,30 +30,37 @@ public class Grafo<T> implements IGrafo<T> {
     public void eliminarVertice(T vertice) {
         int pos = obtenerIndice(vertice);
         if (pos == -1) { System.out.println("El vertice no existe."); return; }
-        for (int i = pos; i < cantidad - 1; i++) vertices[i] = vertices[i + 1];
-        for (int i = pos; i < cantidad - 1; i++)
-            for (int j = 0; j < cantidad; j++) matriz[i][j] = matriz[i + 1][j];
-        for (int j = pos; j < cantidad - 1; j++)
-            for (int i = 0; i < cantidad; i++) matriz[i][j] = matriz[i][j + 1];
+        for (int i = 0; i < cantidad; i++) {
+            if (i == pos) continue;
+            quitarAristaHacia(i, pos);
+        }
+        for (int i = pos; i < cantidad - 1; i++) {
+            vertices[i] = vertices[i + 1];
+            adyacencia[i] = adyacencia[i + 1];
+        }
         cantidad--;
         vertices[cantidad] = null;
-        for (int i = 0; i < capacidad; i++) { matriz[cantidad][i] = 0; matriz[i][cantidad] = 0; }
+        adyacencia[cantidad] = null;
+        for (int i = 0; i < cantidad; i++) reindexar(adyacencia[i], pos);
     }
 
     @Override
-    public void insertarArista(T origen, T destino) {
+    public void insertarArista(T origen, T destino, int peso) {
         int o = obtenerIndice(origen), d = obtenerIndice(destino);
         if (o == -1 || d == -1) { System.out.println("Uno de los vertices no existe."); return; }
-        matriz[o][d] = 1;
-        if (!dirigido) matriz[d][o] = 1;
+        if (buscarArista(o, d) == null) adyacencia[o].agregarFinal(new Arista(d, peso));
+        if (!dirigido && buscarArista(d, o) == null) adyacencia[d].agregarFinal(new Arista(o, peso));
     }
+
+    // sobrecarga para pasillos sin peso explicito (peso 1)
+    public void insertarArista(T origen, T destino) { insertarArista(origen, destino, 1); }
 
     @Override
     public void eliminarArista(T origen, T destino) {
         int o = obtenerIndice(origen), d = obtenerIndice(destino);
         if (o == -1 || d == -1) { System.out.println("Uno de los vertices no existe."); return; }
-        matriz[o][d] = 0;
-        if (!dirigido) matriz[d][o] = 0;
+        quitarAristaHacia(o, d);
+        if (!dirigido) quitarAristaHacia(d, o);
     }
 
     @Override
@@ -62,13 +70,36 @@ public class Grafo<T> implements IGrafo<T> {
     public boolean existeArista(T origen, T destino) {
         int o = obtenerIndice(origen), d = obtenerIndice(destino);
         if (o == -1 || d == -1) return false;
-        return matriz[o][d] == 1;
+        return buscarArista(o, d) != null;
     }
 
     private int obtenerIndice(T vertice) {
         for (int i = 0; i < cantidad; i++)
             if (vertices[i].equals(vertice)) return i;
         return -1;
+    }
+
+    private Arista buscarArista(int origen, int destino) {
+        Nodo<Arista> aux = adyacencia[origen].cabeza;
+        while (aux != null) {
+            if (aux.getDato().getDestino() == destino) return aux.getDato();
+            aux = aux.getSiguiente();
+        }
+        return null;
+    }
+
+    private void quitarAristaHacia(int origen, int destino) {
+        Arista a = buscarArista(origen, destino);
+        if (a != null) adyacencia[origen].eliminar(a);
+    }
+
+    // tras borrar el vertice en posicion 'pos', los destinos > pos bajan 1
+    private void reindexar(Lista<Arista> lista, int pos) {
+        Nodo<Arista> aux = lista.cabeza;
+        while (aux != null) {
+            if (aux.getDato().destino > pos) aux.getDato().destino--;
+            aux = aux.getSiguiente();
+        }
     }
 
     @Override
@@ -79,19 +110,21 @@ public class Grafo<T> implements IGrafo<T> {
     }
 
     @Override
-    public void mostrarMatriz() {
-        System.out.println("Mapa del deposito:");
-        System.out.print("    ");
-        for (int i = 0; i < cantidad; i++) System.out.printf("%-5s", vertices[i]);
-        System.out.println();
+    public void mostrarGrafo() {
+        System.out.println("Mapa del deposito (lista de adyacencia):");
         for (int i = 0; i < cantidad; i++) {
-            System.out.printf("%-5s", vertices[i]);
-            for (int j = 0; j < cantidad; j++) System.out.printf("%-5d", matriz[i][j]);
+            System.out.print("  " + vertices[i] + " -> ");
+            Nodo<Arista> aux = adyacencia[i].cabeza;
+            if (aux == null) System.out.print("(sin conexiones)");
+            while (aux != null) {
+                System.out.print(vertices[aux.getDato().getDestino()] + "(peso " + aux.getDato().getPeso() + ") ");
+                aux = aux.getSiguiente();
+            }
             System.out.println();
         }
     }
 
-    // BFS usando Cola<Integer> y Conjunto propios, sin java.util
+    // BFS usando Cola<Integer> y Conjunto propios; cuenta tramos (no usa pesos)
     @Override
     public String[] bfs(T origen, T destino) {
         int posOrigen = obtenerIndice(origen);
@@ -113,12 +146,15 @@ public class Grafo<T> implements IGrafo<T> {
         while (!cola.estaVacia()) {
             int actual = cola.desencolar();
             if (actual == posDestino) return reconstruirCamino(padre, posOrigen, posDestino);
-            for (int v = 0; v < cantidad; v++) {
-                if (matriz[actual][v] == 1 && visitados.pertenece(v) == -1) {
+            Nodo<Arista> aux = adyacencia[actual].cabeza;
+            while (aux != null) {
+                int v = aux.getDato().getDestino();
+                if (visitados.pertenece(v) == -1) {
                     visitados.insertar(v);
                     padre[v] = actual;
                     cola.encolar(v);
                 }
+                aux = aux.getSiguiente();
             }
         }
 
