@@ -47,7 +47,7 @@ public class ArbolAVL implements IArbolAVL {
         if (nodo == null) return new NodoAVL(dato);
         if (dato < nodo.dato) nodo.izquierdo = insertarRec(nodo.izquierdo, dato);
         else if (dato > nodo.dato) nodo.derecho = insertarRec(nodo.derecho, dato);
-        else return nodo;
+        else { nodo.cantidad++; return nodo; } // duplicado: no creamos nodo, aumentamos el contador
 
         nodo.altura = 1 + Math.max(altura(nodo.izquierdo), altura(nodo.derecho));
         int balance = obtenerBalance(nodo);
@@ -75,11 +75,14 @@ public class ArbolAVL implements IArbolAVL {
         if (dato < nodo.dato) nodo.izquierdo = eliminarRec(nodo.izquierdo, dato);
         else if (dato > nodo.dato) nodo.derecho = eliminarRec(nodo.derecho, dato);
         else {
+            if (nodo.cantidad > 1) { nodo.cantidad--; return nodo; } // aun quedan productos con este stock
             if (nodo.izquierdo == null) return nodo.derecho;
             if (nodo.derecho == null) return nodo.izquierdo;
             NodoAVL suc = nodo.derecho;
             while (suc.izquierdo != null) suc = suc.izquierdo;
             nodo.dato = suc.dato;
+            nodo.cantidad = suc.cantidad; // heredamos el contador del sucesor
+            suc.cantidad = 1;             // forzamos la baja fisica real del sucesor
             nodo.derecho = eliminarRec(nodo.derecho, suc.dato);
         }
         nodo.altura = 1 + Math.max(altura(nodo.izquierdo), altura(nodo.derecho));
@@ -103,7 +106,7 @@ public class ArbolAVL implements IArbolAVL {
     public void mostrarInorden(NodoAVL nodo) {
         if (nodo == null) return;
         mostrarInorden(nodo.izquierdo);
-        System.out.print(nodo.dato + " ");
+        for (int i = 0; i < nodo.cantidad; i++) System.out.print(nodo.dato + " ");
         mostrarInorden(nodo.derecho);
     }
 
