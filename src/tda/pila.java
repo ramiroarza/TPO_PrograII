@@ -1,51 +1,40 @@
 package tda;
 
 public class pila<T> implements IPila<T> {
-    // lista enlazada para generics sin limite fijo de tamaño
-    private Nodo<T> tope;
-    private int cantidad;
+    private ListaDoble<T> lista;
 
     public pila() {
-        this.tope = null;
-        this.cantidad = 0;
+        this.lista = new ListaDoble<>();
     }
 
     @Override
     public void apilar(T dato) {
-        Nodo<T> nuevo = new Nodo<>(dato);
-        nuevo.setSiguiente(tope);
-        tope = nuevo;
-        cantidad++;
+        lista.insertarFinal(dato); // el tope es siempre el fin de la lista
     }
 
     @Override
     public T desapilar() {
         if (pilaVacia()) { System.out.println("La pila esta vacia."); return null; }
-        T dato = tope.getDato();
-        tope = tope.getSiguiente();
-        cantidad--;
+        T dato = lista.getFin().dato;
+        lista.eliminarFinal();
         return dato;
     }
 
     @Override
     public T tope() {
         if (pilaVacia()) { System.out.println("Pila vacia."); return null; }
-        return tope.getDato();
+        return lista.getFin().dato;
     }
 
     @Override
-    public int tamano() { return cantidad; }
+    public int tamano() { return lista.getCantidad(); }
 
     @Override
-    public boolean pilaVacia() { return tope == null; }
+    public boolean pilaVacia() { return lista.estaVacia(); }
 
     @Override
     public void mostrar() {
         if (pilaVacia()) { System.out.println("Pila vacia."); return; }
-        Nodo<T> aux = tope;
-        while (aux != null) {
-            System.out.println("  " + aux.getDato());
-            aux = aux.getSiguiente();
-        }
+        lista.mostrarAtras(); // del tope (fin) hacia el inicio: ultimo movimiento primero
     }
 }
