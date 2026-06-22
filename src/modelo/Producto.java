@@ -1,10 +1,10 @@
-package modelo;
+package Modelo;
 
 public class Producto {
     private String codigo;
     private String nombre;
     private int cantidadStock;
-    private String ubicacion; // ej: "Pasillo A | Estante 2 | Nivel 1"
+    private String ubicacion;
 
     public Producto(String codigo, String nombre, int cantidadStock, String ubicacion) {
         this.codigo = codigo;
