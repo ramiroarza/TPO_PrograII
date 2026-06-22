@@ -1,25 +1,22 @@
 import modelo.Movimiento;
 import modelo.Pedido;
 import modelo.Producto;
-import tda.DiccionarioProducto;
-import tda.ArbolAVL;
-import tda.Cola;
-import tda.pila;
-import tda.Grafo;
+import servicio.GestorInventario;
+import servicio.GestorStock;
+import servicio.GestorExpedicion;
+import servicio.GestorTrazabilidad;
+import servicio.GestorRutas;
 
-import java.util.Scanner; // para leer la consola
+import java.util.Scanner;
 
 public class Main {
 
-    // diccionario guarda el Producto completo (codigo, nombre, stock, ubicacion)
-    static DiccionarioProducto<Producto> diccionario = new DiccionarioProducto<>(100);
-
-    // el AVL se alimenta del stock de cada producto registrado
-    static ArbolAVL inventario = new ArbolAVL();
-
-    static Cola<Pedido> colaPedidos = new Cola<>();
-    static pila<Movimiento> historial = new pila<>();
-    static Grafo<String> grafo = new Grafo<>(20, false);
+    // orden de construccion importante: inventario -> stock -> trazabilidad
+    static GestorInventario   gestorInventario   = new GestorInventario();
+    static GestorStock        gestorStock        = new GestorStock(gestorInventario);
+    static GestorTrazabilidad gestorTrazabilidad = new GestorTrazabilidad(gestorStock, gestorInventario);
+    static GestorExpedicion   gestorExpedicion   = new GestorExpedicion();
+    static GestorRutas        gestorRutas        = new GestorRutas();
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
@@ -71,66 +68,41 @@ public class Main {
                     System.out.print("Nombre: "); String nom = sc.nextLine().trim();
                     System.out.print("Stock inicial: "); int stock = Integer.parseInt(sc.nextLine().trim());
                     System.out.print("Ubicacion (ej Pasillo A Estante 2 Nivel 1): "); String ubi = sc.nextLine().trim();
-
                     if (cod.isBlank()) { System.out.println("El codigo no puede estar vacio"); break; }
                     if (stock < 0) { System.out.println("El stock no puede ser negativo"); break; }
-
                     Producto p = new Producto(cod, nom, stock, ubi);
-                    // solo insertamos el stock en el AVL si el producto se registro de verdad
-                    if (diccionario.insertar(cod, nom, p)) {
-                        inventario.insertar(stock);
-                    }
+                    if (gestorStock.registrar(p)) System.out.println("Producto registrado: " + p);
                 } catch (NumberFormatException e) { System.out.println("El stock tiene que ser un numero"); }
             }
             case "2" -> {
                 System.out.print("Buscar (codigo o nombre): ");
-                Producto p = diccionario.recuperar(sc.nextLine().trim());
+                Producto p = gestorStock.buscar(sc.nextLine().trim());
                 if (p != null) System.out.println("Encontrado: " + p);
             }
             case "3" -> {
                 System.out.print("Codigo o nombre: "); String b = sc.nextLine().trim();
-                Producto p = diccionario.recuperar(b);
-                if (p == null) break;
                 System.out.print("Nueva ubicacion: "); String nuevaUbi = sc.nextLine().trim();
-                p.setUbicacion(nuevaUbi);
-                diccionario.modificar(b, p);
-                System.out.println("Ubicacion actualizada: " + p);
+                if (gestorStock.modificarUbicacion(b, nuevaUbi)) System.out.println("Ubicacion actualizada");
             }
             case "4" -> {
                 System.out.print("Codigo o nombre: "); String b = sc.nextLine().trim();
-                Producto p = diccionario.recuperar(b);
-                if (p == null) break;
                 try {
                     System.out.print("Nuevo stock: "); int nuevoStock = Integer.parseInt(sc.nextLine().trim());
                     if (nuevoStock < 0) { System.out.println("El stock no puede ser negativo"); break; }
-                    // actualizamos el AVL: sacamos el viejo, insertamos el nuevo
-                    inventario.eliminar(p.getCantidadStock());
-                    inventario.insertar(nuevoStock);
-                    p.setCantidadStock(nuevoStock);
-                    diccionario.modificar(b, p);
-                    System.out.println("Stock actualizado: " + p);
+                    if (gestorStock.modificarStock(b, nuevoStock)) System.out.println("Stock actualizado");
                 } catch (NumberFormatException e) { System.out.println("Ingresa un numero valido"); }
             }
             case "5" -> {
                 System.out.print("Codigo o nombre: "); String b = sc.nextLine().trim();
-                Producto p = diccionario.recuperar(b);
-                if (p == null) break;
-                // al eliminar el producto tambien sacamos su stock del AVL
-                inventario.eliminar(p.getCantidadStock());
-                diccionario.eliminar(b);
+                if (gestorStock.eliminar(b)) System.out.println("Producto eliminado");
             }
-            case "6" -> diccionario.mostrar();
+            case "6" -> gestorStock.mostrar();
             case "7" -> {
-                if (diccionario.estaVacio()) { System.out.println("No hay productos registrados"); break; }
-                // recorremos el diccionario y sumamos el stock de todos los productos
-                int total = 0;
-                for (int i = 0; i < diccionario.tamanio(); i++) {
-                    Producto p = diccionario.valorEn(i);
-                    if (p != null) total += p.getCantidadStock();
-                }
-                System.out.println("Stock total del deposito: " + total + " unidades (" + diccionario.tamanio() + " productos)");
+                if (gestorStock.estaVacio()) { System.out.println("No hay productos registrados"); break; }
+                System.out.println("Stock total del deposito: " + gestorStock.stockTotal() +
+                        " unidades (" + gestorStock.cantidadProductos() + " productos)");
             }
-            default  -> System.out.println("Opcion no valida");
+            default -> System.out.println("Opcion no valida");
         }
     }
 
@@ -147,23 +119,22 @@ public class Main {
         switch (sc.nextLine().trim()) {
             case "1" -> {
                 System.out.print("Nombre del sector: "); String nombre = sc.nextLine().trim();
-                grafo.insertarVertice(nombre);
+                gestorRutas.agregarSector(nombre);
                 System.out.println("Sector registrado: " + nombre);
             }
             case "2" -> {
                 System.out.print("Sector A: "); String a = sc.nextLine().trim();
                 System.out.print("Sector B: "); String b = sc.nextLine().trim();
-                if (!grafo.existeVertice(a) || !grafo.existeVertice(b)) {
-                    System.out.println("Uno de los sectores no existe, registralo primero");
-                } else {
-                    grafo.insertarArista(a, b);
-                    System.out.println("Pasillo agregado: " + a + " <-> " + b);
-                }
+                try {
+                    System.out.print("Peso del pasillo: "); int peso = Integer.parseInt(sc.nextLine().trim());
+                    if (gestorRutas.agregarPasillo(a, b, peso)) System.out.println("Pasillo agregado: " + a + " <-> " + b);
+                    else System.out.println("Uno de los sectores no existe, registralo primero");
+                } catch (NumberFormatException e) { System.out.println("El peso tiene que ser un numero"); }
             }
             case "3" -> {
                 System.out.print("Origen: "); String o = sc.nextLine().trim();
                 System.out.print("Destino: "); String d = sc.nextLine().trim();
-                String[] camino = grafo.bfs(o, d);
+                String[] camino = gestorRutas.calcularRuta(o, d);
                 if (camino != null) {
                     System.out.print("Ruta mas corta (" + (camino.length - 1) + " pasillos): ");
                     for (int i = 0; i < camino.length; i++) {
@@ -176,17 +147,15 @@ public class Main {
             case "4" -> {
                 System.out.print("Sector A: "); String a = sc.nextLine().trim();
                 System.out.print("Sector B: "); String b = sc.nextLine().trim();
-                boolean ok = grafo.existeArista(a, b);
+                boolean ok = gestorRutas.hayConexion(a, b);
                 System.out.println(a + " y " + b + (ok ? " estan conectados directamente" : " no tienen conexion directa"));
             }
-            case "5" -> { grafo.mostrarVertices(); grafo.mostrarGrafo(); }
+            case "5" -> gestorRutas.mostrarMapa();
             default  -> System.out.println("Opcion no valida");
         }
     }
 
     // ─── INVENTARIO ──────────────────────────────────────────────────
-    // el AVL ya se actualiza solo desde menuStock cuando registras o modificas un producto
-    // aca solo consultamos
     static void menuInventario(Scanner sc) {
         System.out.println("\n-- Inventario critico --");
         System.out.println("1. Ver producto con menor stock");
@@ -195,18 +164,12 @@ public class Main {
 
         switch (sc.nextLine().trim()) {
             case "1" -> {
-                int min = inventario.minimo();
-                if (min == -1) break;
-                // buscamos el producto que tiene ese stock para mostrar el nombre tambien
-                // recorremos el diccionario para encontrarlo
+                if (gestorInventario.estaVacio()) { System.out.println("No hay productos registrados"); break; }
+                int min = gestorInventario.obtenerMinimo();
                 System.out.println("Menor stock registrado: " + min + " unidades");
+                gestorStock.mostrarProductosConStock(min);
             }
-            case "2" -> {
-                if (inventario.getRaiz() == null) { System.out.println("No hay productos registrados"); break; }
-                System.out.print("Stocks (de menor a mayor): ");
-                inventario.mostrarInorden(inventario.getRaiz());
-                System.out.println();
-            }
+            case "2" -> gestorInventario.mostrarOrdenado();
             default -> System.out.println("Opcion no valida");
         }
     }
@@ -214,7 +177,7 @@ public class Main {
     // ─── EXPEDICION ──────────────────────────────────────────────────
     static void menuExpedicion(Scanner sc) {
         System.out.println("\n-- Expedicion --");
-        System.out.println("Pedidos en cola: " + colaPedidos.tamano());
+        System.out.println("Pedidos en cola: " + gestorExpedicion.pedidosEnCola());
         System.out.println("1. Encolar pedido");
         System.out.println("2. Despachar proximo");
         System.out.println("3. Ver proximo sin despachar");
@@ -226,16 +189,17 @@ public class Main {
                     System.out.print("ID: "); int id = Integer.parseInt(sc.nextLine().trim());
                     System.out.print("Descripcion: "); String desc = sc.nextLine().trim();
                     System.out.print("Prioridad (1-3): "); int prio = Integer.parseInt(sc.nextLine().trim());
-                    colaPedidos.encolar(new Pedido(id, desc, prio));
+                    gestorExpedicion.encolarPedido(new Pedido(id, desc, prio));
+                    System.out.println("Pedido encolado");
                 } catch (NumberFormatException e) { System.out.println("ID y prioridad tienen que ser numeros"); }
             }
             case "2" -> {
-                if (colaPedidos.estaVacia()) { System.out.println("No hay pedidos pendientes"); break; }
-                System.out.println("Despachando: " + colaPedidos.desencolar());
+                if (gestorExpedicion.estaVacia()) { System.out.println("No hay pedidos pendientes"); break; }
+                System.out.println("Despachando: " + gestorExpedicion.despachar());
             }
             case "3" -> {
-                if (colaPedidos.estaVacia()) { System.out.println("No hay pedidos en la cola"); break; }
-                System.out.println("Proximo: " + colaPedidos.frente());
+                if (gestorExpedicion.estaVacia()) { System.out.println("No hay pedidos en la cola"); break; }
+                System.out.println("Proximo: " + gestorExpedicion.proximoPedido());
             }
             default -> System.out.println("Opcion no valida");
         }
@@ -244,7 +208,7 @@ public class Main {
     // ─── TRAZABILIDAD ────────────────────────────────────────────────
     static void menuTrazabilidad(Scanner sc) {
         System.out.println("\n-- Trazabilidad --");
-        System.out.println("Movimientos registrados: " + historial.tamano());
+        System.out.println("Movimientos registrados: " + gestorTrazabilidad.cantidadMovimientos());
         System.out.println("1. Registrar movimiento");
         System.out.println("2. Deshacer ultimo movimiento");
         System.out.println("3. Ver historial");
@@ -255,53 +219,26 @@ public class Main {
                 try {
                     System.out.print("Tipo (INGRESO/EGRESO/TRANSFERENCIA): "); String tipo = sc.nextLine().trim().toUpperCase();
                     if (!tipo.equals("INGRESO") && !tipo.equals("EGRESO") && !tipo.equals("TRANSFERENCIA")) {
-                        System.out.println("Tipo invalido, usa INGRESO, EGRESO o TRANSFERENCIA");
-                        break;
+                        System.out.println("Tipo invalido, usa INGRESO, EGRESO o TRANSFERENCIA"); break;
                     }
                     System.out.print("Codigo del producto: "); String cod = sc.nextLine().trim();
                     System.out.print("Cantidad: "); int cant = Integer.parseInt(sc.nextLine().trim());
                     if (cant <= 0) { System.out.println("La cantidad tiene que ser mayor a cero"); break; }
                     System.out.print("Fecha (ej 2026-06-11): "); String fecha = sc.nextLine().trim();
-
                     Movimiento m = new Movimiento(tipo, cod, cant, fecha);
-                    historial.apilar(m);
-
-                    // si el producto existe, actualizamos su stock segun el tipo de movimiento
-                    Producto p = diccionario.recuperar(cod);
-                    if (p != null) {
-                        int stockViejo = p.getCantidadStock();
-                        int stockNuevo = tipo.equals("INGRESO") ? stockViejo + cant : stockViejo - cant;
-                        if (stockNuevo < 0) { System.out.println("No hay suficiente stock para ese egreso"); historial.desapilar(); break; }
-                        inventario.eliminar(stockViejo);
-                        inventario.insertar(stockNuevo);
-                        p.setCantidadStock(stockNuevo);
-                        diccionario.modificar(cod, p);
-                        System.out.println("Stock actualizado: " + p);
-                    }
+                    if (gestorTrazabilidad.registrar(m)) System.out.println("Movimiento registrado: " + m);
+                    else System.out.println("No hay suficiente stock para ese egreso");
                 } catch (NumberFormatException e) { System.out.println("La cantidad tiene que ser un numero"); }
             }
             case "2" -> {
-                if (historial.pilaVacia()) { System.out.println("No hay movimientos para deshacer"); break; }
-                Movimiento m = historial.desapilar();
+                if (gestorTrazabilidad.estaVacio()) { System.out.println("No hay movimientos para deshacer"); break; }
+                Movimiento m = gestorTrazabilidad.deshacerUltimo();
                 System.out.println("Deshaciendo: " + m);
-
-                // revertimos el efecto en el stock del producto
-                Producto p = diccionario.recuperar(m.getCodigoProducto());
-                if (p != null) {
-                    int stockActual = p.getCantidadStock();
-                    // si el movimiento fue un ingreso, revertir = restar; si fue egreso, revertir = sumar
-                    int stockRevertido = m.getTipo().equals("INGRESO") ? stockActual - m.getCantidad() : stockActual + m.getCantidad();
-                    inventario.eliminar(stockActual);
-                    inventario.insertar(stockRevertido);
-                    p.setCantidadStock(stockRevertido);
-                    diccionario.modificar(m.getCodigoProducto(), p);
-                    System.out.println("Stock revertido: " + p);
-                }
             }
             case "3" -> {
-                if (historial.pilaVacia()) { System.out.println("No hay movimientos registrados"); break; }
+                if (gestorTrazabilidad.estaVacio()) { System.out.println("No hay movimientos registrados"); break; }
                 System.out.println("Historial (ultimo primero):");
-                historial.mostrar();
+                gestorTrazabilidad.verHistorial();
             }
             default -> System.out.println("Opcion no valida");
         }
