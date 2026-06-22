@@ -167,6 +167,7 @@ public class Main {
                 if (gestorInventario.estaVacio()) { System.out.println("No hay productos registrados"); break; }
                 int min = gestorInventario.obtenerMinimo();
                 System.out.println("Menor stock registrado: " + min + " unidades");
+                // corrección 7: muestra el producto asociado al menor stock, no solo el numero
                 gestorStock.mostrarProductosConStock(min);
             }
             case "2" -> gestorInventario.mostrarOrdenado();
