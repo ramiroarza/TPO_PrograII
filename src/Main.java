@@ -76,9 +76,10 @@ public class Main {
                     if (stock < 0) { System.out.println("El stock no puede ser negativo"); break; }
 
                     Producto p = new Producto(cod, nom, stock, ubi);
-                    diccionario.insertar(cod, nom, p);
-                    // al registrar el producto tambien insertamos su stock en el AVL
-                    inventario.insertar(stock);
+                    // solo insertamos el stock en el AVL si el producto se registro de verdad
+                    if (diccionario.insertar(cod, nom, p)) {
+                        inventario.insertar(stock);
+                    }
                 } catch (NumberFormatException e) { System.out.println("El stock tiene que ser un numero"); }
             }
             case "2" -> {
@@ -178,7 +179,7 @@ public class Main {
                 boolean ok = grafo.existeArista(a, b);
                 System.out.println(a + " y " + b + (ok ? " estan conectados directamente" : " no tienen conexion directa"));
             }
-            case "5" -> { grafo.mostrarVertices(); grafo.mostrarMatriz(); }
+            case "5" -> { grafo.mostrarVertices(); grafo.mostrarGrafo(); }
             default  -> System.out.println("Opcion no valida");
         }
     }
