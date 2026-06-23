@@ -34,7 +34,7 @@ public class Main {
             System.out.print("Opcion: ");
 
             try { opcion = Integer.parseInt(sc.nextLine().trim()); }
-            catch (NumberFormatException e) { System.out.println("Ingresa un numero"); continue; }
+            catch (NumberFormatException e) { System.out.println("\n Error, ingrese un numero"); continue; }
 
             switch (opcion) {
                 case 1 -> menuStock(sc);
@@ -68,11 +68,11 @@ public class Main {
                     System.out.print("Nombre: "); String nom = sc.nextLine().trim();
                     System.out.print("Stock inicial: "); int stock = Integer.parseInt(sc.nextLine().trim());
                     System.out.print("Ubicacion (ej Pasillo A Estante 2 Nivel 1): "); String ubi = sc.nextLine().trim();
-                    if (cod.isBlank()) { System.out.println("El codigo no puede estar vacio"); break; }
-                    if (stock < 0) { System.out.println("El stock no puede ser negativo"); break; }
+                    if (cod.isBlank()) { System.out.println("\n El codigo no puede estar vacio"); break; }
+                    if (stock < 0) { System.out.println("\n El stock no puede ser negativo"); break; }
                     Producto p = new Producto(cod, nom, stock, ubi);
                     if (gestorStock.registrar(p)) System.out.println("Producto registrado: " + p);
-                } catch (NumberFormatException e) { System.out.println("El stock tiene que ser un numero"); }
+                } catch (NumberFormatException e) { System.out.println("\n El stock tiene que ser un numero"); }
             }
             case "2" -> {
                 System.out.print("Buscar (codigo o nombre): ");
@@ -88,7 +88,7 @@ public class Main {
                 System.out.print("Codigo o nombre: "); String b = sc.nextLine().trim();
                 try {
                     System.out.print("Nuevo stock: "); int nuevoStock = Integer.parseInt(sc.nextLine().trim());
-                    if (nuevoStock < 0) { System.out.println("El stock no puede ser negativo"); break; }
+                    if (nuevoStock < 0) { System.out.println("\n El stock no puede ser negativo"); break; }
                     if (gestorStock.modificarStock(b, nuevoStock)) System.out.println("Stock actualizado");
                 } catch (NumberFormatException e) { System.out.println("Ingresa un numero valido"); }
             }
@@ -98,7 +98,7 @@ public class Main {
             }
             case "6" -> gestorStock.mostrar();
             case "7" -> {
-                if (gestorStock.estaVacio()) { System.out.println("No hay productos registrados"); break; }
+                if (gestorStock.estaVacio()) { System.out.println("\n No hay productos registrados"); break; }
                 System.out.println("Stock total del deposito: " + gestorStock.stockTotal() +
                         " unidades (" + gestorStock.cantidadProductos() + " productos)");
             }
@@ -164,10 +164,9 @@ public class Main {
 
         switch (sc.nextLine().trim()) {
             case "1" -> {
-                if (gestorInventario.estaVacio()) { System.out.println("No hay productos registrados"); break; }
+                if (gestorInventario.estaVacio()) { System.out.println("\n No hay productos registrados"); break; }
                 int min = gestorInventario.obtenerMinimo();
                 System.out.println("Menor stock registrado: " + min + " unidades");
-                // corrección 7: muestra el producto asociado al menor stock, no solo el numero
                 gestorStock.mostrarProductosConStock(min);
             }
             case "2" -> gestorInventario.mostrarOrdenado();
@@ -192,14 +191,14 @@ public class Main {
                     System.out.print("Prioridad (1-3): "); int prio = Integer.parseInt(sc.nextLine().trim());
                     gestorExpedicion.encolarPedido(new Pedido(id, desc, prio));
                     System.out.println("Pedido encolado");
-                } catch (NumberFormatException e) { System.out.println("ID y prioridad tienen que ser numeros"); }
+                } catch (NumberFormatException e) { System.out.println("\n ID y prioridad tienen que ser numeros"); }
             }
             case "2" -> {
-                if (gestorExpedicion.estaVacia()) { System.out.println("No hay pedidos pendientes"); break; }
+                if (gestorExpedicion.estaVacia()) { System.out.println("\n No hay pedidos pendientes"); break; }
                 System.out.println("Despachando: " + gestorExpedicion.despachar());
             }
             case "3" -> {
-                if (gestorExpedicion.estaVacia()) { System.out.println("No hay pedidos en la cola"); break; }
+                if (gestorExpedicion.estaVacia()) { System.out.println("\n No hay pedidos en la cola"); break; }
                 System.out.println("Proximo: " + gestorExpedicion.proximoPedido());
             }
             default -> System.out.println("Opcion no valida");
@@ -224,12 +223,12 @@ public class Main {
                     }
                     System.out.print("Codigo del producto: "); String cod = sc.nextLine().trim();
                     System.out.print("Cantidad: "); int cant = Integer.parseInt(sc.nextLine().trim());
-                    if (cant <= 0) { System.out.println("La cantidad tiene que ser mayor a cero"); break; }
+                    if (cant <= 0) { System.out.println("\n La cantidad tiene que ser mayor a cero"); break; }
                     System.out.print("Fecha (ej 2026-06-11): "); String fecha = sc.nextLine().trim();
                     Movimiento m = new Movimiento(tipo, cod, cant, fecha);
                     if (gestorTrazabilidad.registrar(m)) System.out.println("Movimiento registrado: " + m);
-                    else System.out.println("No hay suficiente stock para ese egreso");
-                } catch (NumberFormatException e) { System.out.println("La cantidad tiene que ser un numero"); }
+                    else System.out.println("\n No hay suficiente stock para ese egreso");
+                } catch (NumberFormatException e) { System.out.println("\n La cantidad tiene que ser un numero"); }
             }
             case "2" -> {
                 if (gestorTrazabilidad.estaVacio()) { System.out.println("No hay movimientos para deshacer"); break; }
