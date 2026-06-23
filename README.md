@@ -88,8 +88,13 @@ TPO_PrograII/
     ├── modelo/                   # capa de dominio
     │   ├── Producto.java         # codigo, nombre, cantidadStock, ubicacion
     │   ├── Pedido.java           # idPedido, descripcion, prioridad
-    │   ├── Movimiento.java       # tipo, codigoProducto, cantidad, fecha
-    │   └── Sector.java           # idSector, nombre
+    │   └── Movimiento.java       # tipo, codigoProducto, cantidad, fecha
+    ├── servicio/                 # capa de lógica de negocio
+    │   ├── GestorStock.java      # CRUD de productos sobre el diccionario
+    │   ├── GestorInventario.java # consultas de stock sobre el AVL
+    │   ├── GestorRutas.java      # operaciones sobre el grafo
+    │   ├── GestorExpedicion.java # gestión de la cola de pedidos
+    │   └── GestorTrazabilidad.java # historial de movimientos sobre la pila
     └── tda/                      # capa de estructuras de datos e interfaces
         ├── DiccionarioProducto.java / IDiccionarioProducto.java
         ├── ClaveProducto.java / EntradaDiccionario.java
@@ -99,11 +104,10 @@ TPO_PrograII/
         ├── Grafo.java / IGrafo.java
         ├── Lista.java / ILista.java / Nodo.java
         ├── ListaDoble.java / IListaDoble.java / NodoDoble.java
-        ├── Conjunto.java / IConjunto.java
-        └── Ubicacion.java
+        └── Conjunto.java / IConjunto.java
 ```
 
-La aplicación se organiza en dos capas: **modelo** (objetos del dominio) y **tda** (estructuras genéricas). La clase `Main` integra ambas capas y contiene el menú de consola junto con la lógica de cada módulo.
+La aplicación se organiza en tres capas: **modelo** (objetos del dominio), **servicio** (lógica de negocio que conecta el menú con los TDAs) y **tda** (estructuras genéricas). La clase `Main` integra las tres capas y contiene el menú de consola.
 
 ---
 
@@ -131,7 +135,7 @@ Modela el depósito como un grafo no dirigido: los sectores son vértices y los 
 - Agregar pasillo entre dos sectores
 - Calcular la ruta más corta entre dos sectores (BFS)
 - Verificar conexión directa entre dos sectores
-- Ver el mapa (vértices y matriz de adyacencia)
+- Ver el mapa (vértices y lista de adyacencia)
 
 ### 3. Inventario crítico — *Árbol AVL*
 
@@ -153,7 +157,7 @@ Administra los pedidos respetando el orden de llegada.
 
 Registra los movimientos de inventario y permite revertir el último.
 
-- Registrar movimiento (`INGRESO`, `EGRESO` o `TRANSFERENCIA`), actualizando el stock del producto
+- Registrar movimiento (`INGRESO`, `EGRESO` o `TRANSFERENCIA`); los dos primeros modifican el stock del producto, la transferencia solo registra el evento sin alterar el total
 - Deshacer el último movimiento, revirtiendo su efecto sobre el stock
 - Ver el historial completo (del más reciente al más antiguo)
 - **Contador de movimientos registrados** — muestra cuántos movimientos hay en el historial
@@ -166,10 +170,10 @@ Registra los movimientos de inventario y permite revertir el último.
 
 **Desde IntelliJ IDEA:** abrir la carpeta del proyecto y ejecutar la clase `Main`.
 
-**Desde la terminal**, ubicado en `src`:
+**Desde la terminal**, ubicado en la raíz del proyecto:
 
 ```bash
-javac -d out Main.java modelo/*.java tda/*.java
+javac -d out -sourcepath src src/Main.java src/modelo/*.java src/servicio/*.java src/tda/*.java
 java -cp out Main
 ```
 
@@ -202,7 +206,7 @@ Stock total del deposito: 80 unidades (2 productos)
 ## Requisitos no funcionales
 
 - **Eficiencia.** Las operaciones críticas (buscar producto, encolar, deshacer, consultar el mínimo) se resuelven con la estructura adecuada en lugar de recorridos lineales.
-- **Robustez.** El sistema valida entradas inválidas (códigos vacíos, stock negativo, claves duplicadas, operaciones sobre estructuras vacías) e informa el error sin interrumpir la ejecución.
+- **Robustez.** El sistema valida entradas inválidas (código, nombre y ubicación vacíos, stock negativo, prioridad fuera de rango, fecha vacía, claves duplicadas, pasillos duplicados, operaciones sobre estructuras vacías) e informa el error sin interrumpir la ejecución.
 - **Legibilidad.** El código separa con claridad las capas de modelo y de TDAs, usa nombres descriptivos e incluye comentarios en los métodos complejos.
 - **Reutilización.** Los TDAs se implementan con generics (`<T>`) para poder usarse con cualquier tipo de objeto sin duplicar código.
 
