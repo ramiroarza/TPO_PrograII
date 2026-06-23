@@ -65,11 +65,13 @@ public class Main {
             case "1" -> {
                 try {
                     System.out.print("Codigo (ej PROD-001): "); String cod = sc.nextLine().trim();
-                    System.out.print("Nombre: "); String nom = sc.nextLine().trim();
-                    System.out.print("Stock inicial: "); int stock = Integer.parseInt(sc.nextLine().trim());
-                    System.out.print("Ubicacion (ej Pasillo A Estante 2 Nivel 1): "); String ubi = sc.nextLine().trim();
                     if (cod.isBlank()) { System.out.println("\n El codigo no puede estar vacio"); break; }
+                    System.out.print("Nombre: "); String nom = sc.nextLine().trim();
+                    if (nom.isBlank()) { System.out.println("\n El nombre no puede estar vacio"); break; }
+                    System.out.print("Stock inicial: "); int stock = Integer.parseInt(sc.nextLine().trim());
                     if (stock < 0) { System.out.println("\n El stock no puede ser negativo"); break; }
+                    System.out.print("Ubicacion (ej Pasillo A Estante 2 Nivel 1): "); String ubi = sc.nextLine().trim();
+                    if (ubi.isBlank()) { System.out.println("\n La ubicacion no puede estar vacia"); break; }
                     Producto p = new Producto(cod, nom, stock, ubi);
                     if (gestorStock.registrar(p)) System.out.println("Producto registrado: " + p);
                 } catch (NumberFormatException e) { System.out.println("\n El stock tiene que ser un numero"); }
@@ -119,6 +121,7 @@ public class Main {
         switch (sc.nextLine().trim()) {
             case "1" -> {
                 System.out.print("Nombre del sector: "); String nombre = sc.nextLine().trim();
+                if (nombre.isBlank()) { System.out.println("\n El nombre no puede estar vacio"); break; }
                 gestorRutas.agregarSector(nombre);
                 System.out.println("Sector registrado: " + nombre);
             }
@@ -127,7 +130,8 @@ public class Main {
                 System.out.print("Sector B: "); String b = sc.nextLine().trim();
                 try {
                     System.out.print("Peso del pasillo: "); int peso = Integer.parseInt(sc.nextLine().trim());
-                    if (gestorRutas.agregarPasillo(a, b, peso)) System.out.println("Pasillo agregado: " + a + " <-> " + b);
+                    if (gestorRutas.hayConexion(a, b)) System.out.println("Ya existe un pasillo entre " + a + " y " + b);
+                    else if (gestorRutas.agregarPasillo(a, b, peso)) System.out.println("Pasillo agregado: " + a + " <-> " + b);
                     else System.out.println("Uno de los sectores no existe, registralo primero");
                 } catch (NumberFormatException e) { System.out.println("El peso tiene que ser un numero"); }
             }
@@ -189,6 +193,7 @@ public class Main {
                     System.out.print("ID: "); int id = Integer.parseInt(sc.nextLine().trim());
                     System.out.print("Descripcion: "); String desc = sc.nextLine().trim();
                     System.out.print("Prioridad (1-3): "); int prio = Integer.parseInt(sc.nextLine().trim());
+                    if (prio < 1 || prio > 3) { System.out.println("\n La prioridad debe ser 1, 2 o 3"); break; }
                     gestorExpedicion.encolarPedido(new Pedido(id, desc, prio));
                     System.out.println("Pedido encolado");
                 } catch (NumberFormatException e) { System.out.println("\n ID y prioridad tienen que ser numeros"); }
@@ -225,15 +230,17 @@ public class Main {
                     System.out.print("Cantidad: "); int cant = Integer.parseInt(sc.nextLine().trim());
                     if (cant <= 0) { System.out.println("\n La cantidad tiene que ser mayor a cero"); break; }
                     System.out.print("Fecha (ej 2026-06-11): "); String fecha = sc.nextLine().trim();
+                    if (fecha.isBlank()) { System.out.println("\n La fecha no puede estar vacia"); break; }
                     Movimiento m = new Movimiento(tipo, cod, cant, fecha);
                     if (gestorTrazabilidad.registrar(m)) System.out.println("Movimiento registrado: " + m);
-                    else System.out.println("\n No hay suficiente stock para ese egreso");
+                    else System.out.println("\n No se pudo registrar: producto no encontrado o stock insuficiente para el egreso");
                 } catch (NumberFormatException e) { System.out.println("\n La cantidad tiene que ser un numero"); }
             }
             case "2" -> {
                 if (gestorTrazabilidad.estaVacio()) { System.out.println("No hay movimientos para deshacer"); break; }
                 Movimiento m = gestorTrazabilidad.deshacerUltimo();
-                System.out.println("Deshaciendo: " + m);
+                if (m == null) System.out.println("\n No se puede deshacer: revertir ese ingreso dejaria el stock en negativo");
+                else System.out.println("Deshaciendo: " + m);
             }
             case "3" -> {
                 if (gestorTrazabilidad.estaVacio()) { System.out.println("No hay movimientos registrados"); break; }

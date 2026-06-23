@@ -40,7 +40,6 @@ public class DiccionarioProducto<T> implements IDiccionarioProducto<T> {
         porNombre[hn] = eNom;
 
         cantidad++;
-        System.out.println("Insertado: (" + codigo + " : " + nombre + ") -> " + valor);
         return true;
     }
 
@@ -82,7 +81,6 @@ public class DiccionarioProducto<T> implements IDiccionarioProducto<T> {
         EntradaDiccionario<T> porN = buscarPorNombre(clave.getNombre());
         if (porC != null) porC.valor = nuevoValor;
         if (porN != null) porN.valor = nuevoValor;
-        System.out.println("Modificado: " + clave + " -> " + nuevoValor);
         return true;
     }
 
@@ -95,7 +93,6 @@ public class DiccionarioProducto<T> implements IDiccionarioProducto<T> {
         quitarDeTabla(porCodigo, hash(clave.getCodigo()), clave.getCodigo(), true);
         quitarDeTabla(porNombre, hash(clave.getNombre()), clave.getNombre(), false);
         cantidad--;
-        System.out.println("Eliminado: " + clave);
         return true;
     }
 
