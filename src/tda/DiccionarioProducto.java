@@ -66,9 +66,16 @@ public class DiccionarioProducto<T> implements IDiccionarioProducto<T> {
     @Override
     public T recuperar(String busqueda) {
         EntradaDiccionario<T> e = buscarPorCodigo(busqueda);
-        if (e == null) e = buscarPorNombre(busqueda); // si no es codigo, probamos por nombre
+        if (e == null) e = buscarPorNombre(busqueda);
         if (e == null) { System.out.println("No se encontro ningun producto con: '" + busqueda + "'."); return null; }
         return e.valor;
+    }
+
+    // version sin mensaje de consola, para llamadas internas
+    public T recuperarSilencioso(String busqueda) {
+        EntradaDiccionario<T> e = buscarPorCodigo(busqueda);
+        if (e == null) e = buscarPorNombre(busqueda);
+        return e != null ? e.valor : null;
     }
 
     @Override

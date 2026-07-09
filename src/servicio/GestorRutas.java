@@ -14,6 +14,11 @@ public class GestorRutas {
     }
 
     public String[] calcularRuta(String origen, String destino) { return grafo.bfs(origen, destino); }
+
+    public String[] calcularRutaMasCorta(String origen, String destino) { return grafo.dijkstra(origen, destino); }
+
+    public int distanciaEntre(String a, String b) { return grafo.distancia(a, b); }
+
     public boolean hayConexion(String a, String b) { return grafo.existeArista(a, b); }
     public boolean existeSector(String nombre) { return grafo.existeVertice(nombre); }
     public void mostrarMapa() { grafo.mostrarVertices(); grafo.mostrarGrafo(); }

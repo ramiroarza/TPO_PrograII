@@ -8,4 +8,5 @@ public interface IArbolAVL {
     void mostrarInorden(NodoAVL nodo);
     void mostrarPreorden(NodoAVL nodo);
     void mostrarPostorden(NodoAVL nodo);
+    Lista<Integer> stocksMenoresOIgual(int umbral);
 }

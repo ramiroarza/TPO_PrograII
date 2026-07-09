@@ -1,6 +1,7 @@
 package servicio;
 
 import tda.ArbolAVL;
+import tda.Lista;
 
 public class GestorInventario {
     private ArbolAVL arbol = new ArbolAVL();
@@ -22,4 +23,6 @@ public class GestorInventario {
         arbol.mostrarInorden(arbol.getRaiz());
         System.out.println();
     }
+
+    public Lista<Integer> stocksBajoUmbral(int umbral) { return arbol.stocksMenoresOIgual(umbral); }
 }

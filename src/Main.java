@@ -6,17 +6,19 @@ import servicio.GestorStock;
 import servicio.GestorExpedicion;
 import servicio.GestorTrazabilidad;
 import servicio.GestorRutas;
+import servicio.GestorPicking;
 
 import java.util.Scanner;
 
 public class Main {
 
-    // orden de construccion importante: inventario -> stock -> trazabilidad
+
     static GestorInventario   gestorInventario   = new GestorInventario();
-    static GestorStock        gestorStock        = new GestorStock(gestorInventario);
+    static GestorRutas        gestorRutas        = new GestorRutas();
+    static GestorStock        gestorStock        = new GestorStock(gestorInventario, gestorRutas);
     static GestorTrazabilidad gestorTrazabilidad = new GestorTrazabilidad(gestorStock, gestorInventario);
     static GestorExpedicion   gestorExpedicion   = new GestorExpedicion();
-    static GestorRutas        gestorRutas        = new GestorRutas();
+    static GestorPicking      gestorPicking      = new GestorPicking(gestorStock, gestorRutas);
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
@@ -30,6 +32,7 @@ public class Main {
             System.out.println("3. Inventario critico");
             System.out.println("4. Expedicion de pedidos");
             System.out.println("5. Trazabilidad");
+            System.out.println("6. Ruteo de picking");
             System.out.println("0. Salir");
             System.out.print("Opcion: ");
 
@@ -42,6 +45,7 @@ public class Main {
                 case 3 -> menuInventario(sc);
                 case 4 -> menuExpedicion(sc);
                 case 5 -> menuTrazabilidad(sc);
+                case 6 -> menuPicking(sc);
                 case 0 -> System.out.println("Saliendo...");
                 default -> System.out.println("Opcion no valida");
             }
@@ -59,6 +63,7 @@ public class Main {
         System.out.println("5. Eliminar producto");
         System.out.println("6. Ver todos");
         System.out.println("7. Stock total del deposito");
+        System.out.println("8. Buscar por similitud");
         System.out.print("Opcion: ");
 
         switch (sc.nextLine().trim()) {
@@ -70,8 +75,12 @@ public class Main {
                     if (nom.isBlank()) { System.out.println("\n El nombre no puede estar vacio"); break; }
                     System.out.print("Stock inicial: "); int stock = Integer.parseInt(sc.nextLine().trim());
                     if (stock < 0) { System.out.println("\n El stock no puede ser negativo"); break; }
-                    System.out.print("Ubicacion (ej Pasillo A Estante 2 Nivel 1): "); String ubi = sc.nextLine().trim();
+                    System.out.print("Ubicacion (sector ya registrado en Rutas, ej Pasillo A): "); String ubi = sc.nextLine().trim();
                     if (ubi.isBlank()) { System.out.println("\n La ubicacion no puede estar vacia"); break; }
+                    if (!gestorRutas.existeSector(ubi)) {
+                        System.out.println("\n El sector '" + ubi + "' no existe. Registralo primero en Rutas (opcion 1).");
+                        break;
+                    }
                     Producto p = new Producto(cod, nom, stock, ubi);
                     if (gestorStock.registrar(p)) System.out.println("Producto registrado: " + p);
                 } catch (NumberFormatException e) { System.out.println("\n El stock tiene que ser un numero"); }
@@ -83,7 +92,12 @@ public class Main {
             }
             case "3" -> {
                 System.out.print("Codigo o nombre: "); String b = sc.nextLine().trim();
-                System.out.print("Nueva ubicacion: "); String nuevaUbi = sc.nextLine().trim();
+                System.out.print("Nueva ubicacion (sector ya registrado en Rutas): "); String nuevaUbi = sc.nextLine().trim();
+                if (nuevaUbi.isBlank()) { System.out.println("\n La ubicacion no puede estar vacia"); break; }
+                if (!gestorRutas.existeSector(nuevaUbi)) {
+                    System.out.println("\n El sector '" + nuevaUbi + "' no existe. Registralo primero en Rutas (opcion 1).");
+                    break;
+                }
                 if (gestorStock.modificarUbicacion(b, nuevaUbi)) System.out.println("Ubicacion actualizada");
             }
             case "4" -> {
@@ -104,6 +118,13 @@ public class Main {
                 System.out.println("Stock total del deposito: " + gestorStock.stockTotal() +
                         " unidades (" + gestorStock.cantidadProductos() + " productos)");
             }
+            case "8" -> {
+                System.out.print("Texto a buscar: "); String txt = sc.nextLine().trim();
+                try {
+                    System.out.print("Umbral de diferencia (ej 2): "); int umbral = Integer.parseInt(sc.nextLine().trim());
+                    gestorStock.buscarSimilares(txt, umbral);
+                } catch (NumberFormatException e) { System.out.println("El umbral tiene que ser un numero"); }
+            }
             default -> System.out.println("Opcion no valida");
         }
     }
@@ -113,9 +134,10 @@ public class Main {
         System.out.println("\n-- Rutas --");
         System.out.println("1. Agregar sector");
         System.out.println("2. Agregar pasillo entre sectores");
-        System.out.println("3. Calcular ruta mas corta (BFS)");
+        System.out.println("3. Calcular ruta mas corta (BFS, por tramos)");
         System.out.println("4. Verificar conexion directa");
         System.out.println("5. Ver mapa");
+        System.out.println("6. Calcular ruta por peso (Dijkstra)");
         System.out.print("Opcion: ");
 
         switch (sc.nextLine().trim()) {
@@ -130,6 +152,7 @@ public class Main {
                 System.out.print("Sector B: "); String b = sc.nextLine().trim();
                 try {
                     System.out.print("Peso del pasillo: "); int peso = Integer.parseInt(sc.nextLine().trim());
+                    if (peso <= 0) { System.out.println("El peso debe ser mayor a cero"); break; }
                     if (gestorRutas.hayConexion(a, b)) System.out.println("Ya existe un pasillo entre " + a + " y " + b);
                     else if (gestorRutas.agregarPasillo(a, b, peso)) System.out.println("Pasillo agregado: " + a + " <-> " + b);
                     else System.out.println("Uno de los sectores no existe, registralo primero");
@@ -155,6 +178,19 @@ public class Main {
                 System.out.println(a + " y " + b + (ok ? " estan conectados directamente" : " no tienen conexion directa"));
             }
             case "5" -> gestorRutas.mostrarMapa();
+            case "6" -> {
+                System.out.print("Origen: "); String o = sc.nextLine().trim();
+                System.out.print("Destino: "); String d = sc.nextLine().trim();
+                String[] camino = gestorRutas.calcularRutaMasCorta(o, d);
+                if (camino != null) {
+                    System.out.print("Ruta de menor peso (" + gestorRutas.distanciaEntre(o, d) + " de distancia): ");
+                    for (int i = 0; i < camino.length; i++) {
+                        System.out.print(camino[i]);
+                        if (i < camino.length - 1) System.out.print(" -> ");
+                    }
+                    System.out.println();
+                }
+            }
             default  -> System.out.println("Opcion no valida");
         }
     }
@@ -164,6 +200,7 @@ public class Main {
         System.out.println("\n-- Inventario critico --");
         System.out.println("1. Ver producto con menor stock");
         System.out.println("2. Ver todos los stocks ordenados");
+        System.out.println("3. Alertas de reposicion (stock bajo umbral)");
         System.out.print("Opcion: ");
 
         switch (sc.nextLine().trim()) {
@@ -174,6 +211,13 @@ public class Main {
                 gestorStock.mostrarProductosConStock(min);
             }
             case "2" -> gestorInventario.mostrarOrdenado();
+            case "3" -> {
+                if (gestorInventario.estaVacio()) { System.out.println("\n No hay productos registrados"); break; }
+                try {
+                    System.out.print("Umbral de stock: "); int umbral = Integer.parseInt(sc.nextLine().trim());
+                    gestorStock.mostrarAlertasReposicion(umbral);
+                } catch (NumberFormatException e) { System.out.println("El umbral tiene que ser un numero"); }
+            }
             default -> System.out.println("Opcion no valida");
         }
     }
@@ -239,8 +283,7 @@ public class Main {
             case "2" -> {
                 if (gestorTrazabilidad.estaVacio()) { System.out.println("No hay movimientos para deshacer"); break; }
                 Movimiento m = gestorTrazabilidad.deshacerUltimo();
-                if (m == null) System.out.println("\n No se puede deshacer: revertir ese ingreso dejaria el stock en negativo");
-                else System.out.println("Deshaciendo: " + m);
+                if (m != null) System.out.println("Deshaciendo: " + m);
             }
             case "3" -> {
                 if (gestorTrazabilidad.estaVacio()) { System.out.println("No hay movimientos registrados"); break; }
@@ -249,5 +292,17 @@ public class Main {
             }
             default -> System.out.println("Opcion no valida");
         }
+    }
+
+    // ─── PICKING ─────────────────────────────────────────────────────
+    static void menuPicking(Scanner sc) {
+        System.out.println("\n-- Ruteo de picking --");
+        if (gestorStock.estaVacio()) { System.out.println("\n No hay productos registrados"); return; }
+        System.out.print("Codigos de los productos del pedido (separados por coma): ");
+        String linea = sc.nextLine().trim();
+        if (linea.isBlank()) { System.out.println("No se ingresaron codigos"); return; }
+        String[] codigos = linea.split(",");
+        for (int i = 0; i < codigos.length; i++) codigos[i] = codigos[i].trim();
+        gestorPicking.armarRuta(codigos);
     }
 }

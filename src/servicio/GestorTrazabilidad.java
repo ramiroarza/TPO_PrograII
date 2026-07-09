@@ -33,23 +33,29 @@ public class GestorTrazabilidad {
         return true;
     }
 
-    // devuelve null si deshacer dejaria stock negativo (el movimiento queda en la pila)
+    // devuelve null si no se pudo deshacer (el metodo imprime la razon)
     public Movimiento deshacerUltimo() {
         if (historial.pilaVacia()) return null;
         Movimiento m = historial.desapilar();
         Producto p = gestorStock.recuperar(m.getCodigoProducto());
-        if (p != null) {
-            int actual = p.getCantidadStock();
-            int revertido;
-            if (m.getTipo().equals("INGRESO")) revertido = actual - m.getCantidad();
-            else if (m.getTipo().equals("EGRESO")) revertido = actual + m.getCantidad();
-            else revertido = actual; // TRANSFERENCIA: no hubo cambio de stock
-            if (revertido < 0) { historial.apilar(m); return null; }
-            if (revertido != actual) {
-                gestorInventario.actualizar(actual, revertido);
-                p.setCantidadStock(revertido);
-                gestorStock.actualizarProducto(m.getCodigoProducto(), p);
-            }
+        if (p == null) {
+            System.out.println("El producto '" + m.getCodigoProducto() + "' ya no existe. El movimiento fue retirado del historial.");
+            return null;
+        }
+        int actual = p.getCantidadStock();
+        int revertido;
+        if (m.getTipo().equals("INGRESO")) revertido = actual - m.getCantidad();
+        else if (m.getTipo().equals("EGRESO")) revertido = actual + m.getCantidad();
+        else revertido = actual; // TRANSFERENCIA: no hubo cambio de stock
+        if (revertido < 0) {
+            historial.apilar(m);
+            System.out.println("No se puede deshacer: el stock quedaria en negativo.");
+            return null;
+        }
+        if (revertido != actual) {
+            gestorInventario.actualizar(actual, revertido);
+            p.setCantidadStock(revertido);
+            gestorStock.actualizarProducto(m.getCodigoProducto(), p);
         }
         return m;
     }

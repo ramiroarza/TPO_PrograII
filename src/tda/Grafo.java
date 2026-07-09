@@ -52,7 +52,7 @@ public class Grafo<T> implements IGrafo<T> {
         if (!dirigido && buscarArista(d, o) == null) adyacencia[d].agregarFinal(new Arista(o, peso));
     }
 
-    // sobrecarga para pasillos sin peso explicito (peso 1)
+
     public void insertarArista(T origen, T destino) { insertarArista(origen, destino, 1); }
 
     @Override
@@ -93,7 +93,6 @@ public class Grafo<T> implements IGrafo<T> {
         if (a != null) adyacencia[origen].eliminar(a);
     }
 
-    // tras borrar el vertice en posicion 'pos', los destinos > pos bajan 1
     private void reindexar(Lista<Arista> lista, int pos) {
         Nodo<Arista> aux = lista.cabeza;
         while (aux != null) {
@@ -124,7 +123,6 @@ public class Grafo<T> implements IGrafo<T> {
         }
     }
 
-    // BFS usando Cola<Integer> y Conjunto propios; cuenta tramos (no usa pesos)
     @Override
     public String[] bfs(T origen, T destino) {
         int posOrigen = obtenerIndice(origen);
@@ -160,6 +158,61 @@ public class Grafo<T> implements IGrafo<T> {
 
         System.out.println("No hay camino entre " + origen + " y " + destino);
         return null;
+    }
+
+    @Override
+    public String[] dijkstra(T origen, T destino) {
+        int o = obtenerIndice(origen), d = obtenerIndice(destino);
+        if (o == -1 || d == -1) {
+            System.out.println("Uno de los sectores no existe en el grafo.");
+            return null;
+        }
+        int[] padre = new int[capacidad];
+        int[] dist = calcularDistancias(o, padre);
+        if (dist[d] == Integer.MAX_VALUE) {
+            System.out.println("No hay camino entre " + origen + " y " + destino);
+            return null;
+        }
+        return reconstruirCamino(padre, o, d);
+    }
+
+    @Override
+    public int distancia(T origen, T destino) {
+        int o = obtenerIndice(origen), d = obtenerIndice(destino);
+        if (o == -1 || d == -1) return -1;
+        int[] dist = calcularDistancias(o, null);
+        return dist[d] == Integer.MAX_VALUE ? -1 : dist[d];
+    }
+
+    private int[] calcularDistancias(int origen, int[] padre) {
+        int[] dist = new int[capacidad];
+        boolean[] listo = new boolean[capacidad];
+        for (int i = 0; i < capacidad; i++) {
+            dist[i] = Integer.MAX_VALUE;
+            if (padre != null) padre[i] = -1;
+        }
+        dist[origen] = 0;
+
+        ColaPrioridad<Integer> pq = new ColaPrioridad<>();
+        pq.encolar(origen, 0);
+
+        while (!pq.estaVacia()) {
+            int u = pq.desencolar();
+            if (listo[u]) continue;
+            listo[u] = true;
+            Nodo<Arista> aux = adyacencia[u].cabeza;
+            while (aux != null) {
+                int v = aux.getDato().getDestino();
+                int peso = aux.getDato().getPeso();
+                if (!listo[v] && dist[u] != Integer.MAX_VALUE && dist[u] + peso < dist[v]) {
+                    dist[v] = dist[u] + peso;
+                    if (padre != null) padre[v] = u;
+                    pq.encolar(v, dist[v]);
+                }
+                aux = aux.getSiguiente();
+            }
+        }
+        return dist;
     }
 
     private String[] reconstruirCamino(int[] padre, int origen, int destino) {

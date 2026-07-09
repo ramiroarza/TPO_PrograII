@@ -10,4 +10,6 @@ public interface IGrafo<T> {
     void mostrarVertices();
     void mostrarGrafo();
     String[] bfs(T origen, T destino);
+    String[] dijkstra(T origen, T destino);
+    int distancia(T origen, T destino);
 }
