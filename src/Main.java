@@ -12,7 +12,7 @@ import java.util.Scanner;
 
 public class Main {
 
-
+    // orden de construccion importante: inventario -> rutas -> stock -> trazabilidad -> picking
     static GestorInventario   gestorInventario   = new GestorInventario();
     static GestorRutas        gestorRutas        = new GestorRutas();
     static GestorStock        gestorStock        = new GestorStock(gestorInventario, gestorRutas);
@@ -20,10 +20,13 @@ public class Main {
     static GestorExpedicion   gestorExpedicion   = new GestorExpedicion();
     static GestorPicking      gestorPicking      = new GestorPicking(gestorStock, gestorRutas);
 
+    static boolean datosCargados = false;
+
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         int opcion = -1;
         System.out.println("=== Centro Logistico de Distribucion ===");
+        cargarDatosDeEjemplo(); // carga automatica de datos de ejemplo al iniciar
 
         while (opcion != 0) {
             System.out.println("\n--- Menu ---");
@@ -53,6 +56,50 @@ public class Main {
         sc.close();
     }
 
+    // ─── DATOS DE EJEMPLO / CASOS DE PRUEBA ──────────────────────────
+    // carga un deposito completo para probar las 5 mejoras sin tener que tipear todo
+    static void cargarDatosDeEjemplo() {
+        if (datosCargados) { System.out.println("Los datos de ejemplo ya fueron cargados."); return; }
+
+        // 1) mapa del deposito: sectores (vertices) y pasillos con peso (aristas)
+        String[] sectores = {"Entrada", "A", "B", "C", "D", "E"};
+        for (String s : sectores) gestorRutas.agregarSector(s);
+        gestorRutas.agregarPasillo("Entrada", "A", 4);
+        gestorRutas.agregarPasillo("Entrada", "B", 3);
+        gestorRutas.agregarPasillo("A", "B", 2);
+        gestorRutas.agregarPasillo("A", "C", 5);
+        gestorRutas.agregarPasillo("B", "D", 6);
+        gestorRutas.agregarPasillo("C", "D", 4);
+        gestorRutas.agregarPasillo("C", "E", 4);
+        gestorRutas.agregarPasillo("D", "E", 3);
+
+        // 2) productos: la ubicacion coincide con un sector ya creado; stock variado para las alertas
+        //    "Guantes" y "Guantez" son parecidos a proposito, para probar la busqueda por similitud
+        gestorStock.registrar(new Producto("EL-001", "Guantes", 2, "B"));
+        gestorStock.registrar(new Producto("EL-002", "Cinta", 50, "D"));
+        gestorStock.registrar(new Producto("EL-003", "Tornillos", 1, "E"));
+        gestorStock.registrar(new Producto("EL-004", "Guantez", 30, "A"));
+        gestorStock.registrar(new Producto("EL-005", "Casco", 8, "C"));
+        gestorStock.registrar(new Producto("EL-006", "Caja", 4, "A"));
+
+        // 3) pedidos en la linea de expedicion
+        gestorExpedicion.encolarPedido(new Pedido(101, "Kit de seguridad", 1));
+        gestorExpedicion.encolarPedido(new Pedido(102, "Reposicion pasillo A", 2));
+
+        // 4) movimientos de trazabilidad (modifican el stock y quedan en el historial)
+        gestorTrazabilidad.registrar(new Movimiento("INGRESO", "EL-002", 10, "2026-06-10"));
+        gestorTrazabilidad.registrar(new Movimiento("EGRESO", "EL-005", 3, "2026-06-11"));
+
+        datosCargados = true;
+        System.out.println("Datos de ejemplo cargados: 6 sectores, 8 pasillos, 6 productos, 2 pedidos, 2 movimientos.");
+        System.out.println("Sugerencias para probar las mejoras:");
+        System.out.println("  - Rutas op.6:      Dijkstra Entrada -> E (deberia dar Entrada->B->D->E, distancia 12)");
+        System.out.println("  - Rutas op.3:      BFS Entrada -> E (deberia dar Entrada->A->C->E, 3 pasillos)");
+        System.out.println("  - Picking op.6:    EL-001,EL-002,EL-003");
+        System.out.println("  - Stock op.8:      texto 'guantes', umbral 1 (encuentra Guantes y Guantez)");
+        System.out.println("  - Inventario op.3: umbral 5 (alertas de reposicion via AVL)");
+    }
+
     // ─── STOCK ───────────────────────────────────────────────────────
     static void menuStock(Scanner sc) {
         System.out.println("\n-- Stock --");
@@ -75,12 +122,8 @@ public class Main {
                     if (nom.isBlank()) { System.out.println("\n El nombre no puede estar vacio"); break; }
                     System.out.print("Stock inicial: "); int stock = Integer.parseInt(sc.nextLine().trim());
                     if (stock < 0) { System.out.println("\n El stock no puede ser negativo"); break; }
-                    System.out.print("Ubicacion (sector ya registrado en Rutas, ej Pasillo A): "); String ubi = sc.nextLine().trim();
+                    System.out.print("Ubicacion (ej Pasillo A Estante 2 Nivel 1): "); String ubi = sc.nextLine().trim();
                     if (ubi.isBlank()) { System.out.println("\n La ubicacion no puede estar vacia"); break; }
-                    if (!gestorRutas.existeSector(ubi)) {
-                        System.out.println("\n El sector '" + ubi + "' no existe. Registralo primero en Rutas (opcion 1).");
-                        break;
-                    }
                     Producto p = new Producto(cod, nom, stock, ubi);
                     if (gestorStock.registrar(p)) System.out.println("Producto registrado: " + p);
                 } catch (NumberFormatException e) { System.out.println("\n El stock tiene que ser un numero"); }
@@ -92,12 +135,7 @@ public class Main {
             }
             case "3" -> {
                 System.out.print("Codigo o nombre: "); String b = sc.nextLine().trim();
-                System.out.print("Nueva ubicacion (sector ya registrado en Rutas): "); String nuevaUbi = sc.nextLine().trim();
-                if (nuevaUbi.isBlank()) { System.out.println("\n La ubicacion no puede estar vacia"); break; }
-                if (!gestorRutas.existeSector(nuevaUbi)) {
-                    System.out.println("\n El sector '" + nuevaUbi + "' no existe. Registralo primero en Rutas (opcion 1).");
-                    break;
-                }
+                System.out.print("Nueva ubicacion: "); String nuevaUbi = sc.nextLine().trim();
                 if (gestorStock.modificarUbicacion(b, nuevaUbi)) System.out.println("Ubicacion actualizada");
             }
             case "4" -> {
@@ -152,7 +190,6 @@ public class Main {
                 System.out.print("Sector B: "); String b = sc.nextLine().trim();
                 try {
                     System.out.print("Peso del pasillo: "); int peso = Integer.parseInt(sc.nextLine().trim());
-                    if (peso <= 0) { System.out.println("El peso debe ser mayor a cero"); break; }
                     if (gestorRutas.hayConexion(a, b)) System.out.println("Ya existe un pasillo entre " + a + " y " + b);
                     else if (gestorRutas.agregarPasillo(a, b, peso)) System.out.println("Pasillo agregado: " + a + " <-> " + b);
                     else System.out.println("Uno de los sectores no existe, registralo primero");
@@ -283,7 +320,8 @@ public class Main {
             case "2" -> {
                 if (gestorTrazabilidad.estaVacio()) { System.out.println("No hay movimientos para deshacer"); break; }
                 Movimiento m = gestorTrazabilidad.deshacerUltimo();
-                if (m != null) System.out.println("Deshaciendo: " + m);
+                if (m == null) System.out.println("\n No se puede deshacer: revertir ese ingreso dejaria el stock en negativo");
+                else System.out.println("Deshaciendo: " + m);
             }
             case "3" -> {
                 if (gestorTrazabilidad.estaVacio()) { System.out.println("No hay movimientos registrados"); break; }
